@@ -1,0 +1,8 @@
+{
+  "name": "Rectifier APP",
+  "description": "Interactive single-phase and three-phase diode and thyristor bridge rectifier simulator with dynamic current path animation, freewheeling diode control, R/RL/RLE loads, and synchronized waveform analysis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
