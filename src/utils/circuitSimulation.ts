@@ -1,4 +1,5 @@
 import { ConverterConfig, SimulationPoint, SimulationResult, HarmonicComponent } from '../types';
+import { solveExtinctionAngle } from './waveformDerivations';
 
 export function runCircuitSimulation(config: ConverterConfig): SimulationResult {
   const {
@@ -122,7 +123,7 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
       const isPulse = isS1Thy && theta >= triggerAngle && theta <= triggerAngle + pulseWidth;
       gatePulses.S1 = isPulse;
 
-      const canTriggerS1 = isS1Thy ? (isPulse && vA > E) : (vA > E && vA > 0);
+      const canTriggerS1 = isS1Thy ? (isPulse && vA > E && vA > 0) : (vA > E && vA > 0);
 
       if (canTriggerS1) {
         state1HW = 'S1_ON';
@@ -130,16 +131,16 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         if (vA < 0) {
           if (fwdEnabled && iLoad > 0.0001 && loadType !== 'R') {
             state1HW = 'FWD';
-          } else if (!fwdEnabled && !isS1Thy) {
-            state1HW = 'IDLE'; // Diode naturally turns off when reverse biased
-          } else if (!fwdEnabled && isS1Thy && iLoad > 0.0001 && loadType !== 'R') {
-            state1HW = 'S1_ON'; // Inductor keeps SCR on into negative voltage
+          } else if (!fwdEnabled && iLoad > 0.0001 && loadType !== 'R') {
+            state1HW = 'S1_ON'; // Inductor stored energy keeps diode or thyristor conducting into negative voltage until current drops to zero
           } else {
             state1HW = 'IDLE';
           }
         } else if (vA <= E) {
           if (loadType === 'R' || iLoad <= 0.0001) {
             state1HW = 'IDLE';
+          } else {
+            state1HW = 'S1_ON'; // Inductor maintains current through S1 even when vA <= E
           }
         }
       } else if (state1HW === 'FWD') {
@@ -218,6 +219,8 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         } else if (vA <= E) {
           if (loadType === 'R' || iLoad <= 0.0001) {
             state1FB = 'IDLE';
+          } else {
+            state1FB = 'PAIR_1';
           }
         }
       } else if (state1FB === 'PAIR_2') {
@@ -243,6 +246,8 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         } else if (-vA <= E) {
           if (loadType === 'R' || iLoad <= 0.0001) {
             state1FB = 'IDLE';
+          } else {
+            state1FB = 'PAIR_2';
           }
         }
       } else if (state1FB === 'FWD' || state1FB === 'SEMI_1_4' || state1FB === 'SEMI_3_2') {
@@ -519,17 +524,26 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         const k4 = f_ode(iLoad + dt * k3, vAppliedToBridge);
 
         let nextI = iLoad + (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
-        if (nextI < 0) {
+        if (nextI <= 1e-6) {
           nextI = 0;
-          if (!fwdOn) {
+          if (fwdOn) {
+            fwdOn = false;
+            fwdConducting = false;
+          } else {
             s1 = false;
             s2 = false;
             s3 = false;
             s4 = false;
             s5 = false;
             s6 = false;
-            vLoadInstant = E;
+            currentCarryingS = [];
           }
+          vLoadInstant = E;
+          state1HW = 'IDLE';
+          state1FB = 'IDLE';
+          state3HW = 'IDLE';
+          state3FB = 'IDLE';
+          pathName = 'DCM (Discontinuous / Open)';
         }
         iLoad = nextI;
       }
@@ -728,6 +742,20 @@ function getTheoreticalFormula(config: ConverterConfig, Vm: number) {
   if (phaseMode === '1-phase') {
     if (circuitType === 'half-wave') {
       if (isAllDiode) {
+        if (config.loadType !== 'R' && !fwdOn) {
+          const R = Math.max(0.1, config.loadParams.R);
+          const L_mH = Math.max(0.1, config.loadParams.L || 10);
+          const f = config.sourceParams?.frequency || 50;
+          const betaDeg = solveExtinctionAngle(0, R, L_mH, f);
+          const betaRad = (betaDeg * Math.PI) / 180;
+          const val = (Vm / (2 * Math.PI)) * (1 - Math.cos(betaRad));
+          return {
+            title: '1-Phase Half-Wave Diode Rectifier (RL Load)',
+            formulaVdc: `V_{dc} = \\frac{V_m}{2\\pi} (1 - \\cos\\beta) \\quad [\\beta \\approx ${betaDeg}^\\circ]`,
+            calculatedVdc: val,
+            description: `Diode conducts beyond 180° into negative voltage region until current extinguishes at β ≈ ${betaDeg}°.`,
+          };
+        }
         const val = Vm / Math.PI;
         return {
           title: '1-Phase Half-Wave Diode Rectifier',
@@ -736,14 +764,26 @@ function getTheoreticalFormula(config: ConverterConfig, Vm: number) {
           description: 'Single diode conducts during the positive half-cycle only.',
         };
       } else {
+        if (config.loadType !== 'R' && !fwdOn) {
+          const R = Math.max(0.1, config.loadParams.R);
+          const L_mH = Math.max(0.1, config.loadParams.L || 10);
+          const f = config.sourceParams?.frequency || 50;
+          const betaDeg = solveExtinctionAngle(alpha, R, L_mH, f);
+          const betaRad = (betaDeg * Math.PI) / 180;
+          const val = (Vm / (2 * Math.PI)) * (cosA - Math.cos(betaRad));
+          return {
+            title: '1-Phase Half-Wave Controlled Rectifier (RL Load)',
+            formulaVdc: `V_{dc} = \\frac{V_m}{2\\pi} (\\cos\\alpha - \\cos\\beta) \\quad [\\beta \\approx ${betaDeg}^\\circ]`,
+            calculatedVdc: val,
+            description: `Thyristor conducts from α = ${alpha}° into negative voltage region until current extinguishes at β ≈ ${betaDeg}°.`,
+          };
+        }
         const val = (Vm / (2 * Math.PI)) * (1 + cosA);
         return {
           title: '1-Phase Half-Wave Controlled Converter',
-          formulaVdc: fwdOn
-            ? 'V_{dc} = \\frac{V_m}{2\\pi} (1 + \\cos\\alpha)'
-            : 'V_{dc} = \\frac{V_m}{2\\pi} (1 + \\cos\\alpha)',
+          formulaVdc: 'V_{dc} = \\frac{V_m}{2\\pi} (1 + \\cos\\alpha)',
           calculatedVdc: val,
-          description: 'Thyristor fired at angle α, conducting until current extinction or freewheeling.',
+          description: 'Thyristor fired at angle α, conducting with freewheeling diode clamping output voltage to zero.',
         };
       }
     } else {
