@@ -1276,62 +1276,163 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
                 - Vo (GND)
               </text>
 
-              {/* 3-Phase Sources on Left */}
+              {/* 3-Phase Star-Connected Source on Left */}
               <g id="sources-3ph">
+                {/* Central Star Point (Neutral N) */}
+                <circle
+                  cx={26}
+                  cy={240}
+                  r={7}
+                  fill={isLight ? '#f1f5f9' : '#0f172a'}
+                  stroke={isLight ? '#475569' : '#94a3b8'}
+                  strokeWidth={1.5}
+                />
+                <circle
+                  cx={26}
+                  cy={240}
+                  r={4}
+                  fill={isLight ? '#1e293b' : '#38bdf8'}
+                />
+                <text
+                  x={26}
+                  y={225}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight="bold"
+                  fill={isLight ? '#0f172a' : '#f8fafc'}
+                >
+                  N
+                </text>
+                <text
+                  x={26}
+                  y={258}
+                  textAnchor="middle"
+                  fontSize="7.5"
+                  fontWeight="bold"
+                  letterSpacing="0.05em"
+                  fill={isLight ? '#64748b' : '#94a3b8'}
+                >
+                  STAR
+                </text>
+
+                {/* Star Connection Branch: Neutral to Phase A */}
+                <line
+                  x1={26}
+                  y1={240}
+                  x2={60}
+                  y2={160}
+                  stroke="#ef4444"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                />
+                <circle cx={60} cy={160} r={3} fill="#ef4444" />
+
+                {/* Star Connection Branch: Neutral to Phase B */}
+                <line
+                  x1={26}
+                  y1={240}
+                  x2={60}
+                  y2={240}
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                />
+                <circle cx={60} cy={240} r={3} fill="#f59e0b" />
+
+                {/* Star Connection Branch: Neutral to Phase C */}
+                <line
+                  x1={26}
+                  y1={240}
+                  x2={60}
+                  y2={320}
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                />
+                <circle cx={60} cy={320} r={3} fill="#3b82f6" />
+
                 {/* Phase A (Red) */}
                 <circle
-                  cx={70}
+                  cx={78}
                   cy={160}
                   r={18}
                   fill={isLight ? '#fee2e2' : '#0f172a'}
                   stroke="#ef4444"
                   strokeWidth={2}
                 />
-                <text x={70} y={164} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#b91c1c' : '#fca5a5'}>
+                <text x={78} y={157} textAnchor="middle" fontSize="11" fontWeight="bold" fill={isLight ? '#b91c1c' : '#fca5a5'}>
                   A
                 </text>
-                <line x1={88} y1={160} x2={220} y2={160} stroke="#ef4444" strokeWidth={2} />
+                <path
+                  d="M 71 166 Q 74.5 160, 78 166 T 85 166"
+                  fill="none"
+                  stroke={isLight ? '#ef4444' : '#f87171'}
+                  strokeWidth={1.5}
+                />
+                <line x1={96} y1={160} x2={220} y2={160} stroke="#ef4444" strokeWidth={2} />
                 <circle cx={220} cy={160} r={3.5} fill="#ef4444" />
 
                 {/* Phase B (Amber) */}
                 <circle
-                  cx={70}
+                  cx={78}
                   cy={240}
                   r={18}
                   fill={isLight ? '#fef3c7' : '#0f172a'}
                   stroke="#f59e0b"
                   strokeWidth={2}
                 />
-                <text x={70} y={244} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#b45309' : '#fde68a'}>
+                <text x={78} y={237} textAnchor="middle" fontSize="11" fontWeight="bold" fill={isLight ? '#b45309' : '#fde68a'}>
                   B
                 </text>
-                <line x1={88} y1={240} x2={330} y2={240} stroke="#f59e0b" strokeWidth={2} />
+                <path
+                  d="M 71 246 Q 74.5 240, 78 246 T 85 246"
+                  fill="none"
+                  stroke={isLight ? '#f59e0b' : '#fbbf24'}
+                  strokeWidth={1.5}
+                />
+                <line x1={96} y1={240} x2={330} y2={240} stroke="#f59e0b" strokeWidth={2} />
                 <circle cx={330} cy={240} r={3.5} fill="#f59e0b" />
 
                 {/* Phase C (Blue) */}
                 <circle
-                  cx={70}
+                  cx={78}
                   cy={320}
                   r={18}
                   fill={isLight ? '#dbeafe' : '#0f172a'}
                   stroke="#3b82f6"
                   strokeWidth={2}
                 />
-                <text x={70} y={324} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#1d4ed8' : '#93c5fd'}>
+                <text x={78} y={317} textAnchor="middle" fontSize="11" fontWeight="bold" fill={isLight ? '#1d4ed8' : '#93c5fd'}>
                   C
                 </text>
-                <line x1={88} y1={320} x2={440} y2={320} stroke="#3b82f6" strokeWidth={2} />
+                <path
+                  d="M 71 326 Q 74.5 320, 78 326 T 85 326"
+                  fill="none"
+                  stroke={isLight ? '#3b82f6' : '#60a5fa'}
+                  strokeWidth={1.5}
+                />
+                <line x1={96} y1={320} x2={440} y2={320} stroke="#3b82f6" strokeWidth={2} />
                 <circle cx={440} cy={320} r={3.5} fill="#3b82f6" />
 
                 <text
-                  x={70}
-                  y={360}
+                  x={78}
+                  y={362}
                   textAnchor="middle"
                   fontSize="9.5"
-                  fill={isLight ? '#475569' : '#94a3b8'}
-                  fontWeight="600"
+                  fill={isLight ? '#334155' : '#cbd5e1'}
+                  fontWeight="bold"
                 >
-                  3-Phase Source
+                  Star-Connected 3-Phase Source
+                </text>
+                <text
+                  x={78}
+                  y={375}
+                  textAnchor="middle"
+                  fontSize="8"
+                  fill={isLight ? '#64748b' : '#94a3b8'}
+                  fontFamily="monospace"
+                >
+                  Y-Configuration (Star Point N)
                 </text>
               </g>
 
@@ -1473,24 +1574,24 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
               {/* Load */}
               {renderLoad(680, 240, 80, 400)}
 
-              {/* 3-Phase Conduction Loop Particles */}
+              {/* 3-Phase Conduction Loop Particles through Star Point */}
               {switchStates.S1 && switchStates.S6 && !isFWDConducting && (
-                renderCurrentParticles("M 88 160 L 220 160 L 220 80 L 680 80 L 680 400 L 330 400 L 330 240 L 88 240", "3p-s1-s6", 5.8, 24)
+                renderCurrentParticles("M 26 240 L 60 160 L 96 160 L 220 160 L 220 80 L 680 80 L 680 400 L 330 400 L 330 240 L 96 240 L 60 240 Z", "3p-s1-s6", 6.2, 28)
               )}
               {switchStates.S1 && switchStates.S2 && !isFWDConducting && (
-                renderCurrentParticles("M 88 160 L 220 160 L 220 80 L 680 80 L 680 400 L 440 400 L 440 320 L 88 320", "3p-s1-s2", 5.8, 24)
+                renderCurrentParticles("M 26 240 L 60 160 L 96 160 L 220 160 L 220 80 L 680 80 L 680 400 L 440 400 L 440 320 L 96 320 L 60 320 Z", "3p-s1-s2", 6.2, 28)
               )}
               {switchStates.S3 && switchStates.S2 && !isFWDConducting && (
-                renderCurrentParticles("M 88 240 L 330 240 L 330 80 L 680 80 L 680 400 L 440 400 L 440 320 L 88 320", "3p-s3-s2", 5.8, 24)
+                renderCurrentParticles("M 26 240 L 60 240 L 96 240 L 330 240 L 330 80 L 680 80 L 680 400 L 440 400 L 440 320 L 96 320 L 60 320 Z", "3p-s3-s2", 6.2, 28)
               )}
               {switchStates.S3 && switchStates.S4 && !isFWDConducting && (
-                renderCurrentParticles("M 88 240 L 330 240 L 330 80 L 680 80 L 680 400 L 220 400 L 220 160 L 88 160", "3p-s3-s4", 5.8, 24)
+                renderCurrentParticles("M 26 240 L 60 240 L 96 240 L 330 240 L 330 80 L 680 80 L 680 400 L 220 400 L 220 160 L 96 160 L 60 160 Z", "3p-s3-s4", 6.2, 28)
               )}
               {switchStates.S5 && switchStates.S4 && !isFWDConducting && (
-                renderCurrentParticles("M 88 320 L 440 320 L 440 80 L 680 80 L 680 400 L 220 400 L 220 160 L 88 160", "3p-s5-s4", 5.8, 24)
+                renderCurrentParticles("M 26 240 L 60 320 L 96 320 L 440 320 L 440 80 L 680 80 L 680 400 L 220 400 L 220 160 L 96 160 L 60 160 Z", "3p-s5-s4", 6.2, 28)
               )}
               {switchStates.S5 && switchStates.S6 && !isFWDConducting && (
-                renderCurrentParticles("M 88 320 L 440 320 L 440 80 L 680 80 L 680 400 L 330 400 L 330 240 L 88 240", "3p-s5-s6", 5.8, 24)
+                renderCurrentParticles("M 26 240 L 60 320 L 96 320 L 440 320 L 440 80 L 680 80 L 680 400 L 330 400 L 330 240 L 96 240 L 60 240 Z", "3p-s5-s6", 6.2, 28)
               )}
               {switchStates.S1 && switchStates.S4 && !isFWDConducting && (
                 renderCurrentParticles("M 680 400 L 220 400 L 220 80 L 680 80 L 680 400", "3p-semi-14", 4.2, 16)
@@ -1515,27 +1616,28 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
               {/* Star-connected source on left with Neutral */}
               <g id="star-source">
                 {/* Phase A */}
-                <circle cx={80} cy={140} r={16} fill="#0f172a" stroke="#ef4444" strokeWidth={2} />
-                <text x={80} y={144} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#fca5a5">A</text>
+                <circle cx={80} cy={140} r={16} fill={isLight ? '#fee2e2' : '#0f172a'} stroke="#ef4444" strokeWidth={2} />
+                <text x={80} y={144} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#b91c1c' : '#fca5a5'}>A</text>
                 <line x1={96} y1={140} x2={220} y2={140} stroke="#ef4444" strokeWidth={2} />
 
                 {/* Phase B */}
-                <circle cx={80} cy={220} r={16} fill="#0f172a" stroke="#f59e0b" strokeWidth={2} />
-                <text x={80} y={224} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#fde68a">B</text>
+                <circle cx={80} cy={220} r={16} fill={isLight ? '#fef3c7' : '#0f172a'} stroke="#f59e0b" strokeWidth={2} />
+                <text x={80} y={224} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#b45309' : '#fde68a'}>B</text>
                 <line x1={96} y1={220} x2={330} y2={220} stroke="#f59e0b" strokeWidth={2} />
 
                 {/* Phase C */}
-                <circle cx={80} cy={300} r={16} fill="#0f172a" stroke="#3b82f6" strokeWidth={2} />
-                <text x={80} y={304} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#93c5fd">C</text>
+                <circle cx={80} cy={300} r={16} fill={isLight ? '#dbeafe' : '#0f172a'} stroke="#3b82f6" strokeWidth={2} />
+                <text x={80} y={304} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#1d4ed8' : '#93c5fd'}>C</text>
                 <line x1={96} y1={300} x2={440} y2={300} stroke="#3b82f6" strokeWidth={2} />
 
-                {/* Common Star Neutral */}
-                <line x1={64} y1={140} x2={40} y2={220} stroke="#94a3b8" strokeWidth={2} />
-                <line x1={64} y1={300} x2={40} y2={220} stroke="#94a3b8" strokeWidth={2} />
-                <line x1={40} y1={220} x2={40} y2={400} stroke="#94a3b8" strokeWidth={2} />
-                <line x1={40} y1={400} x2={680} y2={400} stroke="#94a3b8" strokeWidth={2} />
-                <circle cx={40} cy={220} r={4} fill="#94a3b8" />
-                <text x={28} y={215} fontSize="10" fill="#94a3b8" fontWeight="bold">N</text>
+                {/* Common Star Neutral Connections */}
+                <line x1={64} y1={140} x2={40} y2={220} stroke="#ef4444" strokeWidth={2} />
+                <line x1={64} y1={220} x2={40} y2={220} stroke="#f59e0b" strokeWidth={2} />
+                <line x1={64} y1={300} x2={40} y2={220} stroke="#3b82f6" strokeWidth={2} />
+                <line x1={40} y1={220} x2={40} y2={400} stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth={2} />
+                <line x1={40} y1={400} x2={680} y2={400} stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth={2} />
+                <circle cx={40} cy={220} r={4.5} fill={isLight ? '#1e293b' : '#38bdf8'} />
+                <text x={26} y={215} fontSize="10" fill={isLight ? '#0f172a' : '#94a3b8'} fontWeight="bold">N</text>
               </g>
 
               {/* 3 Switches S1, S3, S5 leading to Common Cathode Bus at Top */}
@@ -1560,15 +1662,15 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
               {/* Load */}
               {renderLoad(680, 240, 80, 400)}
 
-              {/* 3-Phase Half-Wave Particles */}
+              {/* 3-Phase Half-Wave Particles through Star Point */}
               {switchStates.S1 && !isFWDConducting && (
-                renderCurrentParticles("M 96 140 L 220 140 L 220 80 L 680 80 L 680 400 L 40 400 L 40 220 L 64 140", "3ph-hw-s1", 5.5, 22)
+                renderCurrentParticles("M 40 220 L 64 140 L 96 140 L 220 140 L 220 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s1", 5.8, 24)
               )}
               {switchStates.S3 && !isFWDConducting && (
-                renderCurrentParticles("M 96 220 L 330 220 L 330 80 L 680 80 L 680 400 L 40 400 L 40 220 L 64 220", "3ph-hw-s3", 5.5, 22)
+                renderCurrentParticles("M 40 220 L 64 220 L 96 220 L 330 220 L 330 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s3", 5.8, 24)
               )}
               {switchStates.S5 && !isFWDConducting && (
-                renderCurrentParticles("M 96 300 L 440 300 L 440 80 L 680 80 L 680 400 L 40 400 L 40 220 L 64 300", "3ph-hw-s5", 5.5, 22)
+                renderCurrentParticles("M 40 220 L 64 300 L 96 300 L 440 300 L 440 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s5", 5.8, 24)
               )}
               {isFWDConducting && (
                 renderCurrentParticles("M 680 400 L 550 400 L 550 80 L 680 80 L 680 400", "3ph-hw-fwd", 3.8, 16)
