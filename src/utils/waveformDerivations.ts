@@ -102,7 +102,7 @@ export const DERIVATION_CASES: DerivationCase[] = [
     waveformType: '1ph-fb-cont',
     summaryFormulaVdc: 'V_{dc} = \\frac{2V_m}{\\pi}\\cos\\alpha',
     summaryFormulaVrms: 'V_{rms} = \\frac{V_m}{\\sqrt{2}} = V_{s,rms}',
-    description: 'Thyristor pairs (S1+S2 and S3+S4) conduct in alternate half-cycles. High load inductance maintains non-zero current across the zero-crossing, allowing the output voltage to go negative until the next thyristor pair is fired at π+α.',
+    description: 'Thyristor pairs (T1+T2 and T3+T4) conduct in alternate half-cycles. High load inductance maintains non-zero current across the zero-crossing, allowing the output voltage to go negative until the next thyristor pair is fired at π+α.',
     vdcSteps: [
       {
         title: 'Step 1: Fundamental Average Voltage Definition',
@@ -306,11 +306,11 @@ export const DERIVATION_CASES: DerivationCase[] = [
     waveformType: '1ph-semi',
     summaryFormulaVdc: 'V_{dc} = \\frac{V_m}{\\pi}(1 + \\cos\\alpha)',
     summaryFormulaVrms: 'V_{rms} = \\frac{V_m}{\\sqrt{2}}\\sqrt{1 - \\frac{\\alpha}{\\pi} + \\frac{\\sin 2\\alpha}{2\\pi}}',
-    description: 'A semi-converter uses Thyristors for top switches (S1, S3) and Diodes for bottom switches (S2, S4). When AC voltage reverses at θ = π, diode D4 naturally turns ON, freewheeling the load current with S1 at zero output voltage (v_o = 0) until S3 is fired at π+α.',
+    description: 'A semi-converter uses Thyristors for top switches (T1, T3) and Diodes for bottom switches (D2, D4). When AC voltage reverses at θ = π, diode D4 naturally turns ON, freewheeling the load current with T1 at zero output voltage (v_o = 0) until T3 is fired at π+α.',
     vdcSteps: [
       {
         title: 'Step 1: Conduction Intervals',
-        description: '• Interval 1 [α to π]: S1 and D2 conduct supply voltage v_o = V_m sin(θ).\n• Interval 2 [π to π+α]: S1 and D4 freewheel together, clamping v_o = 0.',
+        description: '• Interval 1 [α to π]: T1 and D2 conduct supply voltage v_o = V_m sin(θ).\n• Interval 2 [π to π+α]: T1 and D4 freewheel together, clamping v_o = 0.',
         latex: 'V_{dc} = \\frac{1}{\\pi} \\left[ \\int_{\\alpha}^{\\pi} V_m \\sin\\theta \\, d\\theta + \\int_{\\pi}^{\\pi + \\alpha} 0 \\, d\\theta \\right]',
       },
       {

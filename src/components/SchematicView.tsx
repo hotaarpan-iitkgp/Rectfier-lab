@@ -81,6 +81,10 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
     const isThyristor = type === 'thyristor';
     const isRight = direction === 'right';
 
+    // D1..D6 for diodes, T1..T6 for thyristors
+    const devNum = id.replace(/\D/g, '');
+    const displayLabel = isThyristor ? `T${devNum}` : `D${devNum}`;
+
     // Geometry parameters
     const triWidth = 14;
     const anodeY = cy + 12;
@@ -182,7 +186,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
           fill={isConducting ? (isLight ? '#065f46' : '#a7f3d0') : isLight ? '#1e293b' : '#cbd5e1'}
           fontFamily="monospace"
         >
-          {label}
+          {displayLabel}
         </text>
 
         {/* Sub-label inside card */}
@@ -766,7 +770,7 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
             </h3>
             <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               Switches point upwards to + rail. Click switch to toggle{' '}
-              <span className={`font-medium ${isLight ? 'text-sky-600' : 'text-sky-300'}`}>Diode ↔ Thyristor</span>.
+              <span className={`font-medium ${isLight ? 'text-sky-600' : 'text-sky-300'}`}>Diode (D) ↔ Thyristor (T)</span>.
             </p>
           </div>
         </div>

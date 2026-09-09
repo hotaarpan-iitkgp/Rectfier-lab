@@ -153,7 +153,7 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         s1 = true;
         currentCarryingS.push('S1');
         vAppliedToBridge = vA;
-        pathName = `${isS1Thy ? 'Thyristor' : 'Diode'} S1 (Phase A)`;
+        pathName = `${isS1Thy ? 'Thyristor T1' : 'Diode D1'} (Phase A)`;
       } else if (state1HW === 'FWD') {
         fwdOn = true;
         vAppliedToBridge = 0;
@@ -261,29 +261,29 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         s2 = true;
         currentCarryingS.push('S1', 'S2');
         vAppliedToBridge = vA;
-        pathName = `Bridge Pair ${isS1Thy ? 'S1' : 'D1'} + ${isS2Thy ? 'S2' : 'D2'} (Positive Half)`;
+        pathName = `Bridge Pair ${isS1Thy ? 'T1' : 'D1'} + ${isS2Thy ? 'T2' : 'D2'} (Positive Half)`;
       } else if (state1FB === 'PAIR_2') {
         s3 = true;
         s4 = true;
         currentCarryingS.push('S3', 'S4');
         vAppliedToBridge = -vA;
-        pathName = `Bridge Pair ${isS3Thy ? 'S3' : 'D3'} + ${isS4Thy ? 'S4' : 'D4'} (Negative Half)`;
+        pathName = `Bridge Pair ${isS3Thy ? 'T3' : 'D3'} + ${isS4Thy ? 'T4' : 'D4'} (Negative Half)`;
       } else if (state1FB === 'FWD') {
         fwdOn = true;
         vAppliedToBridge = 0;
-        pathName = 'Freewheeling Diode (FWD)';
+        pathName = 'Freewheeling Diode (D_FW)';
       } else if (state1FB === 'SEMI_1_4') {
         s1 = true;
         s4 = true;
         currentCarryingS.push('S1', 'S4');
         vAppliedToBridge = 0;
-        pathName = `Semi-Converter Freewheeling (${isS1Thy ? 'S1' : 'D1'} + ${isS4Thy ? 'S4' : 'D4'})`;
+        pathName = `Semi-Converter Freewheeling (${isS1Thy ? 'T1' : 'D1'} + ${isS4Thy ? 'T4' : 'D4'})`;
       } else if (state1FB === 'SEMI_3_2') {
         s3 = true;
         s2 = true;
         currentCarryingS.push('S3', 'S2');
         vAppliedToBridge = 0;
-        pathName = `Semi-Converter Freewheeling (${isS3Thy ? 'S3' : 'D3'} + ${isS2Thy ? 'S2' : 'D2'})`;
+        pathName = `Semi-Converter Freewheeling (${isS3Thy ? 'T3' : 'D3'} + ${isS2Thy ? 'T2' : 'D2'})`;
       } else {
         vAppliedToBridge = E;
         pathName = 'DCM (Discontinuous / Open)';
@@ -316,7 +316,7 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
           if (activeSwitch === 'S5') s5 = true;
           currentCarryingS.push(activeSwitch);
           vAppliedToBridge = maxV;
-          pathName = `Diode ${activeSwitch} (${phName})`;
+          pathName = `Diode D${activeSwitch.replace(/\D/g, '')} (${phName})`;
         } else {
           vAppliedToBridge = E;
           pathName = 'DCM (Discontinuous / Open)';
@@ -324,9 +324,9 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
       } else {
         // Controlled 3-Phase Half-Wave Converter
         const baseAngles = [
-          { id: 'PH_A', switchId: 'S1', thetaNat: Math.PI / 6, v: vA, name: 'S1 (Phase A)' },
-          { id: 'PH_B', switchId: 'S3', thetaNat: (5 * Math.PI) / 6, v: vB, name: 'S3 (Phase B)' },
-          { id: 'PH_C', switchId: 'S5', thetaNat: (9 * Math.PI) / 6, v: vC, name: 'S5 (Phase C)' },
+          { id: 'PH_A', switchId: 'S1', thetaNat: Math.PI / 6, v: vA, name: 'Phase A' },
+          { id: 'PH_B', switchId: 'S3', thetaNat: (5 * Math.PI) / 6, v: vB, name: 'Phase B' },
+          { id: 'PH_C', switchId: 'S5', thetaNat: (9 * Math.PI) / 6, v: vC, name: 'Phase C' },
         ];
 
         // Pulse generation
@@ -349,14 +349,15 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
         if (hasFWD && isFWDActive && selectedV < 0 && iLoad > 0.0001 && loadType !== 'R') {
           fwdOn = true;
           vAppliedToBridge = 0;
-          pathName = 'Freewheeling Diode (FWD)';
+          pathName = 'Freewheeling Diode (D_FW)';
         } else if (selectedV > E || (loadType !== 'R' && iLoad > 0.0001 && !fwdEnabled)) {
           if (activePh.switchId === 'S1') s1 = true;
           if (activePh.switchId === 'S3') s3 = true;
           if (activePh.switchId === 'S5') s5 = true;
           currentCarryingS.push(activePh.switchId);
           vAppliedToBridge = selectedV;
-          pathName = `Thyristor ${activePh.name}`;
+          const devTypePrefix = switches[activePh.switchId] === 'thyristor' ? 'T' : 'D';
+          pathName = `${switches[activePh.switchId] === 'thyristor' ? 'Thyristor' : 'Diode'} ${devTypePrefix}${activePh.switchId.replace(/\D/g, '')} (${activePh.name})`;
         } else {
           vAppliedToBridge = E;
           pathName = 'DCM (Discontinuous / Open)';
@@ -408,7 +409,7 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
 
           currentCarryingS.push(topSwitch, botSwitch);
           vAppliedToBridge = naturalLineV;
-          pathName = `Diode Pair ${topSwitch} + ${botSwitch}`;
+          pathName = `Diode Pair D${topSwitch.replace(/\D/g, '')} + D${botSwitch.replace(/\D/g, '')}`;
         } else {
           vAppliedToBridge = E;
           pathName = 'DCM (Discontinuous / Open)';
@@ -416,12 +417,12 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
       } else {
         // 3-Phase Controlled Bridge / Semi-Converter
         const intervals = [
-          { id: 'INT_0', natStart: Math.PI / 6, top: 'S1', bot: 'S6', v: vAB, name: 'S1 + S6 (vAB)', semiFwdTop: 'S1', semiFwdBot: 'S4' },
-          { id: 'INT_1', natStart: Math.PI / 2, top: 'S1', bot: 'S2', v: vAC, name: 'S1 + S2 (vAC)', semiFwdTop: 'S1', semiFwdBot: 'S4' },
-          { id: 'INT_2', natStart: (5 * Math.PI) / 6, top: 'S3', bot: 'S2', v: vBC, name: 'S3 + S2 (vBC)', semiFwdTop: 'S3', semiFwdBot: 'S6' },
-          { id: 'INT_3', natStart: (7 * Math.PI) / 6, top: 'S3', bot: 'S4', v: vBA, name: 'S3 + S4 (vBA)', semiFwdTop: 'S3', semiFwdBot: 'S6' },
-          { id: 'INT_4', natStart: (3 * Math.PI) / 2, top: 'S5', bot: 'S4', v: vCA, name: 'S5 + S4 (vCA)', semiFwdTop: 'S5', semiFwdBot: 'S2' },
-          { id: 'INT_5', natStart: (11 * Math.PI) / 6, top: 'S5', bot: 'S6', v: vCB, name: 'S5 + S6 (vCB)', semiFwdTop: 'S5', semiFwdBot: 'S2' },
+          { id: 'INT_0', natStart: Math.PI / 6, top: 'S1', bot: 'S6', v: vAB, lineName: 'vAB', semiFwdTop: 'S1', semiFwdBot: 'S4' },
+          { id: 'INT_1', natStart: Math.PI / 2, top: 'S1', bot: 'S2', v: vAC, lineName: 'vAC', semiFwdTop: 'S1', semiFwdBot: 'S4' },
+          { id: 'INT_2', natStart: (5 * Math.PI) / 6, top: 'S3', bot: 'S2', v: vBC, lineName: 'vBC', semiFwdTop: 'S3', semiFwdBot: 'S6' },
+          { id: 'INT_3', natStart: (7 * Math.PI) / 6, top: 'S3', bot: 'S4', v: vBA, lineName: 'vBA', semiFwdTop: 'S3', semiFwdBot: 'S6' },
+          { id: 'INT_4', natStart: (3 * Math.PI) / 2, top: 'S5', bot: 'S4', v: vCA, lineName: 'vCA', semiFwdTop: 'S5', semiFwdBot: 'S2' },
+          { id: 'INT_5', natStart: (11 * Math.PI) / 6, top: 'S5', bot: 'S6', v: vCB, lineName: 'vCB', semiFwdTop: 'S5', semiFwdBot: 'S2' },
         ];
 
         // Shift relative to 30° natural commutation boundary
@@ -453,7 +454,7 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
           // External Freewheeling Diode clamps negative voltage
           fwdOn = true;
           vAppliedToBridge = 0;
-          pathName = 'Freewheeling Diode (FWD)';
+          pathName = 'Freewheeling Diode (D_FW)';
         } else if (canFreewheel && lineV < 0 && iLoad > 0.0001 && loadType !== 'R') {
           // Semi-converter intrinsic freewheeling pair in same leg
           const fwdTop = canFreewheelTopLeg ? activeInterval.top : botLegTop;
@@ -466,7 +467,9 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
           if (fwdBot === 'S2') s2 = true;
           currentCarryingS.push(fwdTop, fwdBot);
           vAppliedToBridge = 0;
-          pathName = `Semi-Converter Freewheeling (${fwdTop} + ${fwdBot})`;
+          const fwdTopLabel = `${switches[fwdTop] === 'thyristor' ? 'T' : 'D'}${fwdTop.replace(/\D/g, '')}`;
+          const fwdBotLabel = `${switches[fwdBot] === 'thyristor' ? 'T' : 'D'}${fwdBot.replace(/\D/g, '')}`;
+          pathName = `Semi-Converter Freewheeling (${fwdTopLabel} + ${fwdBotLabel})`;
         } else if (lineV > E || (loadType !== 'R' && iLoad > 0.0001 && !fwdEnabled && !canFreewheel)) {
           // Conducting line-to-line pair
           if (activeInterval.top === 'S1') s1 = true;
@@ -478,7 +481,9 @@ export function runCircuitSimulation(config: ConverterConfig): SimulationResult 
 
           currentCarryingS.push(activeInterval.top, activeInterval.bot);
           vAppliedToBridge = lineV;
-          pathName = activeInterval.name;
+          const topLabel = `${switches[activeInterval.top] === 'thyristor' ? 'T' : 'D'}${activeInterval.top.replace(/\D/g, '')}`;
+          const botLabel = `${switches[activeInterval.bot] === 'thyristor' ? 'T' : 'D'}${activeInterval.bot.replace(/\D/g, '')}`;
+          pathName = `${topLabel} + ${botLabel} (${activeInterval.lineName})`;
         } else {
           vAppliedToBridge = E;
           pathName = 'DCM (Discontinuous / Open)';

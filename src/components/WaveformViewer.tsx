@@ -27,6 +27,21 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   const [cyclesCount, setCyclesCount] = useState<number>(1); // Default to 1 clean cycle (0° - 360°)
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showRmsAvg, setShowRmsAvg] = useState<boolean>(true);
+  const [showPhaseVoltages, setShowPhaseVoltages] = useState<boolean>(false);
+  const [showLineVoltages, setShowLineVoltages] = useState<boolean>(true);
+  const [showAllPhaseCurrents, setShowAllPhaseCurrents] = useState<boolean>(false);
+
+  // Set sensible initial toggles when 3-phase topology changes
+  useEffect(() => {
+    if (config.phaseMode === '3-phase') {
+      if (config.circuitType === 'half-wave') {
+        setShowPhaseVoltages(true);
+        setShowLineVoltages(false);
+      } else {
+        setShowLineVoltages(true);
+      }
+    }
+  }, [config.phaseMode, config.circuitType]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDraggingRef = useRef<boolean>(false);
@@ -161,9 +176,16 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       const yBotStart = padT + hTop + 14;
 
       // --- Top Plot: Voltages (Vs, Vo, E) ---
-      const topTitle = config.phaseMode === '3-phase' && config.circuitType === 'full-bridge'
-        ? 'Voltage Waveforms (v_line & v_o Superimposed)'
-        : 'Voltage Waveforms (v_s & v_o Superimposed)';
+      let topTitle = 'Voltage Waveforms (v_s & v_o Superimposed)';
+      if (config.phaseMode === '3-phase') {
+        if (showLineVoltages && showPhaseVoltages) {
+          topTitle = 'Voltage Waveforms (Line v_LL & Phase v_ph & v_o Superimposed)';
+        } else if (showPhaseVoltages) {
+          topTitle = 'Voltage Waveforms (Phase Voltages v_an, v_bn, v_cn & v_o)';
+        } else {
+          topTitle = 'Voltage Waveforms (Line-to-Line Voltages v_LL & v_o)';
+        }
+      }
       drawPlotBackground(ctx, padL, yTopStart, plotW, hTop, topTitle, 'V');
       drawVoltageGrid(ctx, padL, yTopStart, plotW, hTop, minV, maxV);
 
@@ -183,52 +205,59 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         }
         ctx.stroke();
         ctx.setLineDash([]);
-      } else if (config.circuitType === 'full-bridge') {
-        // 3-Phase Full-Bridge: Draw 6 Line-to-Line Voltages (vAB, vBC, vCA and -vAB, -vBC, -vCA)
-        const drawLineV = (accessor: (p: SimulationPoint) => number, color: string) => {
-          ctx.beginPath();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.1;
-          ctx.setLineDash([3, 3]);
-          for (let s = 0; s < totalSteps; s++) {
-            const pt = points[s % totalPoints];
-            const x = getX(s);
-            const y = valToY(accessor(pt), minV, maxV, yTopStart, hTop);
-            if (s === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
-          ctx.setLineDash([]);
-        };
-        // Line voltages
-        const alphaLine = isLight ? 0.65 : 0.55;
-        const alphaInv = isLight ? 0.45 : 0.35;
-        drawLineV((p) => p.vSourceLineAB, `rgba(239, 68, 68, ${alphaLine})`);   // Red: vAB
-        drawLineV((p) => p.vSourceLineBC, `rgba(245, 158, 11, ${alphaLine})`);  // Amber: vBC
-        drawLineV((p) => p.vSourceLineCA, `rgba(59, 130, 246, ${alphaLine})`);  // Blue: vCA
-        drawLineV((p) => -p.vSourceLineAB, `rgba(239, 68, 68, ${alphaInv})`);  // vBA
-        drawLineV((p) => -p.vSourceLineBC, `rgba(245, 158, 11, ${alphaInv})`); // vCB
-        drawLineV((p) => -p.vSourceLineCA, `rgba(59, 130, 246, ${alphaInv})`); // vAC
       } else {
-        // 3-Phase Half-Wave: Draw Phase voltages: vA (red), vB (amber), vC (blue)
-        const drawPhaseLine = (accessor: (p: SimulationPoint) => number, color: string) => {
-          ctx.beginPath();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.2;
-          ctx.setLineDash([3, 3]);
-          for (let s = 0; s < totalSteps; s++) {
-            const pt = points[s % totalPoints];
-            const x = getX(s);
-            const y = valToY(accessor(pt), minV, maxV, yTopStart, hTop);
-            if (s === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+        // 3-Phase: Can draw Line Voltages and/or Star Phase Voltages!
+
+        // 1. Line-to-Line Voltages
+        if (showLineVoltages) {
+          const drawLineV = (accessor: (p: SimulationPoint) => number, color: string, isInv = false) => {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = isInv ? 1.0 : 1.2;
+            ctx.setLineDash(isInv ? [2, 3] : [4, 3]);
+            for (let s = 0; s < totalSteps; s++) {
+              const pt = points[s % totalPoints];
+              const x = getX(s);
+              const y = valToY(accessor(pt), minV, maxV, yTopStart, hTop);
+              if (s === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+          };
+          const alphaLine = isLight ? 0.7 : 0.6;
+          const alphaInv = isLight ? 0.4 : 0.3;
+          drawLineV((p) => p.vSourceLineAB, `rgba(239, 68, 68, ${alphaLine})`, false);   // Red: vAB
+          drawLineV((p) => p.vSourceLineBC, `rgba(245, 158, 11, ${alphaLine})`, false);  // Amber: vBC
+          drawLineV((p) => p.vSourceLineCA, `rgba(59, 130, 246, ${alphaLine})`, false);  // Blue: vCA
+          if (config.circuitType === 'full-bridge') {
+            drawLineV((p) => -p.vSourceLineAB, `rgba(239, 68, 68, ${alphaInv})`, true);  // vBA
+            drawLineV((p) => -p.vSourceLineBC, `rgba(245, 158, 11, ${alphaInv})`, true); // vCB
+            drawLineV((p) => -p.vSourceLineCA, `rgba(59, 130, 246, ${alphaInv})`, true); // vAC
           }
-          ctx.stroke();
-          ctx.setLineDash([]);
-        };
-        drawPhaseLine((p) => p.vSourceA, isLight ? 'rgba(220, 38, 38, 0.8)' : 'rgba(239, 68, 68, 0.7)'); // Red Ph A
-        drawPhaseLine((p) => p.vSourceB, isLight ? 'rgba(217, 119, 6, 0.8)' : 'rgba(245, 158, 11, 0.7)'); // Amber Ph B
-        drawPhaseLine((p) => p.vSourceC, isLight ? 'rgba(37, 99, 235, 0.8)' : 'rgba(59, 130, 246, 0.7)'); // Blue Ph C
+        }
+
+        // 2. Star Phase Voltages (van, vbn, vcn)
+        if (showPhaseVoltages) {
+          const drawPhaseLine = (accessor: (p: SimulationPoint) => number, color: string) => {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([5, 3]);
+            for (let s = 0; s < totalSteps; s++) {
+              const pt = points[s % totalPoints];
+              const x = getX(s);
+              const y = valToY(accessor(pt), minV, maxV, yTopStart, hTop);
+              if (s === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+          };
+          drawPhaseLine((p) => p.vSourceA, isLight ? 'rgba(220, 38, 38, 0.9)' : 'rgba(248, 113, 113, 0.85)'); // Red: v_an
+          drawPhaseLine((p) => p.vSourceB, isLight ? 'rgba(217, 119, 6, 0.9)' : 'rgba(251, 191, 36, 0.85)');  // Amber: v_bn
+          drawPhaseLine((p) => p.vSourceC, isLight ? 'rgba(37, 99, 235, 0.9)' : 'rgba(96, 165, 250, 0.85)');  // Blue: v_cn
+        }
       }
 
       // Draw Back-EMF E line if RLE
@@ -271,26 +300,55 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       ctx.stroke();
 
       // --- Bottom Plot: Currents (Io, Is, Gate) ---
-      drawPlotBackground(ctx, padL, yBotStart, plotW, hBot, 'Current Waveforms (i_o & i_s)', 'A');
+      let botTitle = 'Current Waveforms (i_o & i_s)';
+      if (config.phaseMode === '3-phase') {
+        botTitle = showAllPhaseCurrents
+          ? 'Current Waveforms [Load i_o(t) & Line Currents i_a, i_b, i_c]'
+          : 'Current Waveforms [Load i_o(t) & Phase A Line Current i_a(t)]';
+      }
+      drawPlotBackground(ctx, padL, yBotStart, plotW, hBot, botTitle, 'A');
       drawCurrentGrid(ctx, padL, yBotStart, plotW, hBot, -maxI, maxI);
 
-      // Draw Source Current i_s(t)
-      ctx.beginPath();
-      ctx.strokeStyle = colors.iSource;
-      ctx.lineWidth = 1.5;
-      for (let s = 0; s < totalSteps; s++) {
-        const pt = points[s % totalPoints];
-        const x = getX(s);
-        const y = valToY(pt.iSource, -maxI, maxI, yBotStart, hBot);
-        if (s === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+      // Draw Supply / Line Currents
+      if (config.phaseMode === '3-phase' && showAllPhaseCurrents) {
+        // Draw all 3 phase currents: i_a (Indigo), i_b (Amber), i_c (Sky)
+        const drawPhaseCurrent = (accessor: (p: SimulationPoint) => number, color: string, dash: number[] = []) => {
+          ctx.beginPath();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash(dash);
+          for (let s = 0; s < totalSteps; s++) {
+            const pt = points[s % totalPoints];
+            const x = getX(s);
+            const y = valToY(accessor(pt), -maxI, maxI, yBotStart, hBot);
+            if (s === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        };
+        drawPhaseCurrent((p) => p.iSource, isLight ? '#4f46e5' : '#818cf8', []); // i_a Phase A
+        drawPhaseCurrent((p) => p.iSourceB, isLight ? '#d97706' : '#fbbf24', [4, 2]); // i_b Phase B
+        drawPhaseCurrent((p) => p.iSourceC, isLight ? '#0284c7' : '#38bdf8', [4, 2]); // i_c Phase C
+      } else {
+        // Draw Source / Phase A Current i_s(t) / i_a(t)
+        ctx.beginPath();
+        ctx.strokeStyle = colors.iSource;
+        ctx.lineWidth = 1.6;
+        for (let s = 0; s < totalSteps; s++) {
+          const pt = points[s % totalPoints];
+          const x = getX(s);
+          const y = valToY(pt.iSource, -maxI, maxI, yBotStart, hBot);
+          if (s === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
 
       // Draw Output Load Current i_o(t) in Amber/Gold
       ctx.beginPath();
       ctx.strokeStyle = colors.iLoad;
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2.4;
       for (let s = 0; s < totalSteps; s++) {
         const pt = points[s % totalPoints];
         const x = getX(s);
@@ -325,20 +383,39 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
       // Track 3: Source Voltage v_s
       const y3 = y2 + trackH + 8;
-      drawPlotBackground(ctx, padL, y3, plotW, trackH, 'Source AC Voltage v_s(t)', 'V');
+      const v3Title = config.phaseMode === '3-phase'
+        ? (showPhaseVoltages && !showLineVoltages)
+          ? 'Star Phase Voltage v_an(t)'
+          : 'Line-to-Line AC Voltage v_ab(t)'
+        : 'Source AC Voltage v_s(t)';
+      drawPlotBackground(ctx, padL, y3, plotW, trackH, v3Title, 'V');
       drawVoltageGrid(ctx, padL, y3, plotW, trackH, -maxV, maxV);
-      drawSingleWave(ctx, (p) => p.vSourceA, -maxV, maxV, y3, trackH, colors.vSourceA, 1.8, totalSteps, totalPoints, padL, plotW);
+      const v3Accessor = config.phaseMode === '3-phase' && (!showPhaseVoltages || showLineVoltages)
+        ? (p: SimulationPoint) => p.vSourceLineAB
+        : (p: SimulationPoint) => p.vSourceA;
+      drawSingleWave(ctx, v3Accessor, -maxV, maxV, y3, trackH, colors.vSourceA, 1.8, totalSteps, totalPoints, padL, plotW);
 
       // Track 4: Source Current i_s
       const y4 = y3 + trackH + 8;
-      drawPlotBackground(ctx, padL, y4, plotW, trackH, 'Source AC Current i_s(t)', 'A');
+      const i4Title = config.phaseMode === '3-phase'
+        ? showAllPhaseCurrents
+          ? '3-Phase Line Currents i_a, i_b, i_c'
+          : 'Phase A Line Current i_a(t)'
+        : 'Source AC Current i_s(t)';
+      drawPlotBackground(ctx, padL, y4, plotW, trackH, i4Title, 'A');
       drawCurrentGrid(ctx, padL, y4, plotW, trackH, -maxI, maxI);
-      drawSingleWave(ctx, (p) => p.iSource, -maxI, maxI, y4, trackH, colors.iSource, 1.8, totalSteps, totalPoints, padL, plotW);
+      if (config.phaseMode === '3-phase' && showAllPhaseCurrents) {
+        drawSingleWave(ctx, (p) => p.iSource, -maxI, maxI, y4, trackH, colors.iSource, 1.6, totalSteps, totalPoints, padL, plotW);
+        drawSingleWave(ctx, (p) => p.iSourceB, -maxI, maxI, y4, trackH, isLight ? '#d97706' : '#fbbf24', 1.4, totalSteps, totalPoints, padL, plotW);
+        drawSingleWave(ctx, (p) => p.iSourceC, -maxI, maxI, y4, trackH, isLight ? '#0284c7' : '#38bdf8', 1.4, totalSteps, totalPoints, padL, plotW);
+      } else {
+        drawSingleWave(ctx, (p) => p.iSource, -maxI, maxI, y4, trackH, colors.iSource, 1.8, totalSteps, totalPoints, padL, plotW);
+      }
 
       // Scrubber
       drawScrubber(ctx, padL, padT, plotW, plotH, currentIndex, totalPoints, cyclesCount);
     }
-  }, [viewMode, cyclesCount, showGrid, showRmsAvg, currentIndex, points, simResult, config, isLight]);
+  }, [viewMode, cyclesCount, showGrid, showRmsAvg, showPhaseVoltages, showLineVoltages, showAllPhaseCurrents, currentIndex, points, simResult, config, isLight]);
 
   // Helpers for canvas drawing
   const valToY = (val: number, minVal: number, maxVal: number, top: number, height: number) => {
@@ -672,6 +749,76 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
         {/* View Options & Cycle Toggle */}
         <div className="flex items-center gap-2">
+          {config.phaseMode === '3-phase' && viewMode !== 'harmonics' && (
+            <div
+              id="three-phase-waveform-controls"
+              className={`flex items-center gap-1 p-0.5 rounded-lg border ${
+                isLight ? 'bg-slate-100 border-slate-300 shadow-xs' : 'bg-slate-900 border-slate-800'
+              }`}
+            >
+              <button
+                id="btn-toggle-line-voltages"
+                onClick={() => {
+                  if (showLineVoltages && !showPhaseVoltages) {
+                    setShowPhaseVoltages(true);
+                  }
+                  setShowLineVoltages((prev) => !prev);
+                }}
+                className={`px-2 py-1 text-xs font-semibold rounded transition flex items-center gap-1.5 ${
+                  showLineVoltages
+                    ? isLight
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-sky-500 text-slate-950 font-bold shadow-xs'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+                title="Toggle 3-Phase Line-to-Line AC Voltages (v_ab, v_bc, v_ca)"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80"></span>
+                Line (V_LL)
+              </button>
+              <button
+                id="btn-toggle-phase-voltages"
+                onClick={() => {
+                  if (showPhaseVoltages && !showLineVoltages) {
+                    setShowLineVoltages(true);
+                  }
+                  setShowPhaseVoltages((prev) => !prev);
+                }}
+                className={`px-2 py-1 text-xs font-semibold rounded transition flex items-center gap-1.5 ${
+                  showPhaseVoltages
+                    ? isLight
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-rose-500 text-slate-950 font-bold shadow-xs'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+                title="Toggle 3-Phase Star Phase Voltages (v_an, v_bn, v_cn)"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${showPhaseVoltages ? 'bg-current' : 'bg-rose-500'}`}></span>
+                Phase (V_ph)
+              </button>
+              <button
+                id="btn-toggle-all-currents"
+                onClick={() => setShowAllPhaseCurrents((prev) => !prev)}
+                className={`px-2 py-1 text-xs font-semibold rounded transition flex items-center gap-1.5 ${
+                  showAllPhaseCurrents
+                    ? isLight
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-indigo-500 text-slate-950 font-bold shadow-xs'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+                title="Toggle All 3-Phase Line Currents (i_a, i_b, i_c) vs Phase A (i_a)"
+              >
+                {showAllPhaseCurrents ? 'Currents (ia,ib,ic)' : 'i_a (Line A)'}
+              </button>
+            </div>
+          )}
+
           {viewMode !== 'harmonics' && (
             <>
               <button
@@ -745,7 +892,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
             isLight ? 'bg-slate-50/80 border-slate-200 text-slate-700' : 'bg-slate-950/40 border-slate-800/40 text-slate-300'
           }`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span
               className={`flex items-center gap-1.5 font-medium ${
                 isLight ? 'text-emerald-700' : 'text-emerald-400'
@@ -754,14 +901,43 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               <span className="w-3 h-1 bg-emerald-500 rounded"></span>
               v_o(t) Load Voltage
             </span>
-            <span
-              className={`flex items-center gap-1.5 font-medium ${
-                isLight ? 'text-sky-700' : 'text-sky-400'
-              }`}
-            >
-              <span className="w-3 h-0.5 border-t border-dashed border-sky-500"></span>
-              v_s(t) Source AC
-            </span>
+
+            {config.phaseMode === '1-phase' ? (
+              <span
+                className={`flex items-center gap-1.5 font-medium ${
+                  isLight ? 'text-sky-700' : 'text-sky-400'
+                }`}
+              >
+                <span className="w-3 h-0.5 border-t border-dashed border-sky-500"></span>
+                v_s(t) Source AC
+              </span>
+            ) : (
+              <>
+                {showLineVoltages && (
+                  <span
+                    className={`flex items-center gap-1.5 font-medium ${
+                      isLight ? 'text-sky-700' : 'text-sky-400'
+                    }`}
+                    title="Line-to-Line Voltages: v_ab, v_bc, v_ca"
+                  >
+                    <span className="w-3 h-0.5 border-t border-dashed border-sky-500"></span>
+                    v_LL Line Voltages (v_ab, v_bc, v_ca)
+                  </span>
+                )}
+                {showPhaseVoltages && (
+                  <span
+                    className={`flex items-center gap-1.5 font-medium ${
+                      isLight ? 'text-rose-700' : 'text-rose-400'
+                    }`}
+                    title="Phase Voltages: v_an (Red), v_bn (Amber), v_cn (Blue)"
+                  >
+                    <span className="w-3 h-0.5 border-t border-dashed border-rose-500"></span>
+                    v_ph Phase Voltages (v_an, v_bn, v_cn)
+                  </span>
+                )}
+              </>
+            )}
+
             <span
               className={`flex items-center gap-1.5 font-medium ${
                 isLight ? 'text-amber-700' : 'text-amber-400'
@@ -770,14 +946,36 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               <span className="w-3 h-1 bg-amber-500 rounded"></span>
               i_o(t) Load Current
             </span>
-            <span
-              className={`flex items-center gap-1.5 font-medium ${
-                isLight ? 'text-indigo-700' : 'text-sky-300'
-              }`}
-            >
-              <span className="w-3 h-0.5 bg-indigo-500"></span>
-              i_s(t) Source Current
-            </span>
+
+            {config.phaseMode === '1-phase' ? (
+              <span
+                className={`flex items-center gap-1.5 font-medium ${
+                  isLight ? 'text-indigo-700' : 'text-sky-300'
+                }`}
+              >
+                <span className="w-3 h-0.5 bg-indigo-500"></span>
+                i_s(t) Source Current
+              </span>
+            ) : showAllPhaseCurrents ? (
+              <span
+                className={`flex items-center gap-1.5 font-medium ${
+                  isLight ? 'text-indigo-700' : 'text-indigo-300'
+                }`}
+              >
+                <span className="w-3 h-0.5 bg-indigo-500"></span>
+                i_a, i_b, i_c 3-Phase Line Currents
+              </span>
+            ) : (
+              <span
+                className={`flex items-center gap-1.5 font-medium ${
+                  isLight ? 'text-indigo-700' : 'text-sky-300'
+                }`}
+              >
+                <span className="w-3 h-0.5 bg-indigo-500"></span>
+                i_a(t) Phase A Line Current
+              </span>
+            )}
+
             {Object.values(config.switches).some((s) => s === 'thyristor') && (
               <span
                 className={`flex items-center gap-1.5 font-medium ${
@@ -793,7 +991,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           {/* Instant Cursor Values readout */}
           {currentPt && (
             <div
-              className={`flex items-center gap-2 font-mono text-[11px] px-2 py-0.5 rounded border ${
+              className={`flex flex-wrap items-center gap-2 font-mono text-[11px] px-2 py-0.5 rounded border ${
                 isLight
                   ? 'text-slate-800 bg-white border-slate-200 shadow-xs'
                   : 'text-slate-300 bg-slate-900 border-slate-800'
@@ -810,6 +1008,27 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               <span>
                 io = <b className={isLight ? 'text-amber-700' : 'text-amber-400'}>{currentPt.iLoad.toFixed(2)}A</b>
               </span>
+              <span className={isLight ? 'text-slate-300' : 'text-slate-500'}>|</span>
+              <span>
+                {config.phaseMode === '1-phase' ? 'is' : 'ia'} ={' '}
+                <b className={isLight ? 'text-indigo-700' : 'text-sky-300'}>{currentPt.iSource.toFixed(2)}A</b>
+              </span>
+              {config.phaseMode === '3-phase' && showPhaseVoltages && (
+                <>
+                  <span className={isLight ? 'text-slate-300' : 'text-slate-500'}>|</span>
+                  <span>
+                    van = <b className={isLight ? 'text-rose-700' : 'text-rose-400'}>{currentPt.vSourceA.toFixed(1)}V</b>
+                  </span>
+                </>
+              )}
+              {config.phaseMode === '3-phase' && showLineVoltages && (
+                <>
+                  <span className={isLight ? 'text-slate-300' : 'text-slate-500'}>|</span>
+                  <span>
+                    vab = <b className={isLight ? 'text-sky-700' : 'text-sky-400'}>{currentPt.vSourceLineAB.toFixed(1)}V</b>
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
