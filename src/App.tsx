@@ -63,7 +63,7 @@ export default function App() {
   const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
   const [isAnalysisOpen, setIsAnalysisOpen] = useState<boolean>(false);
   const [isFullScreenOpen, setIsFullScreenOpen] = useState<boolean>(false);
-  const [fullScreenTab, setFullScreenTab] = useState<'schematic' | 'waveforms'>('schematic');
+  const [fullScreenTab, setFullScreenTab] = useState<'schematic' | 'waveforms' | 'hybrid'>('hybrid');
   const [currentPresetId, setCurrentPresetId] = useState<string | undefined>('1ph-thyristor-bridge-rl');
 
   // Compute steady-state physics ODE solution
@@ -307,7 +307,7 @@ export default function App() {
             <button
               id="btn-open-fullscreen-studio"
               onClick={() => {
-                setFullScreenTab('schematic');
+                setFullScreenTab('hybrid');
                 setIsFullScreenOpen(true);
               }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-sm ${
@@ -315,7 +315,7 @@ export default function App() {
                   ? 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-300'
                   : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border-sky-500/40'
               }`}
-              title="Open Dedicated Full Screen Studio Mode"
+              title="Open Dedicated Full Screen Studio (Hybrid Side-by-Side View)"
             >
               <Maximize2 className="w-3.5 h-3.5 text-sky-500" />
               Full Screen Studio

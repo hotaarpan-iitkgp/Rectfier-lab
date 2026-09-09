@@ -126,6 +126,40 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDraggingRef = useRef<boolean>(false);
+  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const updateSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setCanvasDimensions({ width: Math.round(rect.width), height: Math.round(rect.height) });
+      }
+    };
+
+    updateSize();
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          setCanvasDimensions({
+            width: Math.round(entry.contentRect.width),
+            height: Math.round(entry.contentRect.height),
+          });
+        }
+      }
+    });
+
+    observer.observe(canvas);
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
 
   const points = simResult.points;
   const totalPoints = points.length;
@@ -512,7 +546,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       // Scrubber
       drawScrubber(ctx, padL, padT, plotW, yStripStart + hStrip - padT, currentIndex, totalPoints, cyclesCount);
     }
-  }, [viewMode, cyclesCount, showGrid, showRmsAvg, showPhaseVoltages, showLineVoltages, showAllPhaseCurrents, currentIndex, points, simResult, config, isLight]);
+  }, [viewMode, cyclesCount, showGrid, showRmsAvg, showPhaseVoltages, showLineVoltages, showAllPhaseCurrents, currentIndex, points, simResult, config, isLight, canvasDimensions]);
 
   // Helpers for canvas drawing
   const valToY = (val: number, minVal: number, maxVal: number, top: number, height: number) => {
