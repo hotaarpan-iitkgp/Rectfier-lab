@@ -13,6 +13,87 @@ interface WaveformViewerProps {
 
 type ViewMode = 'superimposed' | 'stacked' | 'harmonics';
 
+export interface ActiveDeviceInfo {
+  label: string;
+  devices: string[];
+  isDCM: boolean;
+  isFreewheel: boolean;
+  type: 'diode' | 'thyristor' | 'mixed' | 'fwd' | 'dcm';
+}
+
+export function getActiveDeviceAtPoint(pt: SimulationPoint, config: ConverterConfig): ActiveDeviceInfo {
+  const hasSwitchOn =
+    pt.switchStates &&
+    (pt.switchStates.S1 ||
+      pt.switchStates.S2 ||
+      pt.switchStates.S3 ||
+      pt.switchStates.S4 ||
+      pt.switchStates.S5 ||
+      pt.switchStates.S6);
+  const hasFwdOn =
+    (pt.iFWD && pt.iFWD > 0.001) ||
+    (pt.conductingPathName && pt.conductingPathName.includes('Freewheeling Diode'));
+
+  if (!hasSwitchOn && !hasFwdOn) {
+    return {
+      label: 'OFF',
+      devices: [],
+      isDCM: true,
+      isFreewheel: false,
+      type: 'dcm',
+    };
+  }
+
+  if (hasFwdOn && !hasSwitchOn) {
+    return {
+      label: 'DFW',
+      devices: ['DFW'],
+      isDCM: false,
+      isFreewheel: true,
+      type: 'fwd',
+    };
+  }
+
+  const devList: { num: number; label: string; isThy: boolean }[] = [];
+  ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].forEach((key) => {
+    if (pt.switchStates && pt.switchStates[key]) {
+      const isThy = config.switches[key] === 'thyristor';
+      const num = parseInt(key.replace(/\D/g, ''), 10);
+      devList.push({
+        num,
+        label: `${isThy ? 'T' : 'D'}${num}`,
+        isThy,
+      });
+    }
+  });
+
+  if (devList.length === 0) {
+    return {
+      label: 'OFF',
+      devices: [],
+      isDCM: true,
+      isFreewheel: false,
+      type: 'dcm',
+    };
+  }
+
+  // Sort ascending by device number: 1, 2, 3, 4, 5, 6
+  // Produces natural textbook pairs: D1 D6, D1 D2, D2 D3, D3 D4, D4 D5, D5 D6
+  devList.sort((a, b) => a.num - b.num);
+  const label = devList.map((d) => d.label).join(' ');
+  const anyThy = devList.some((d) => d.isThy);
+  const allThy = devList.every((d) => d.isThy);
+  const type = allThy ? 'thyristor' : anyThy ? 'mixed' : 'diode';
+
+  return {
+    label,
+    devices: devList.map((d) => d.label),
+    isDCM: false,
+    isFreewheel: false,
+    type,
+  };
+}
+
 export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   config,
   simResult,
@@ -169,11 +250,16 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
     const getX = (step: number) => padL + (step / (totalSteps - 1)) * plotW;
 
     if (viewMode === 'superimposed') {
-      // 2 Sub-plots: Top = Voltages (Vs & Vo Superimposed), Bottom = Currents (Io & Is) + Gate Pulses
-      const hTop = plotH * 0.58;
-      const hBot = plotH * 0.38;
+      // 2 Sub-plots: Top = Voltages (Vs & Vo Superimposed), Bottom = Currents (Io & Is) + Gate Pulses + Conduction Strip
+      const hStrip = 24;
+      const gapStrip = 10;
+      const gapPlots = 14;
+      const availablePlotH = Math.max(100, plotH - hStrip - gapStrip);
+      const hTop = availablePlotH * 0.58;
+      const hBot = availablePlotH * 0.42;
       const yTopStart = padT;
-      const yBotStart = padT + hTop + 14;
+      const yBotStart = yTopStart + hTop + gapPlots;
+      const yStripStart = yBotStart + hBot + gapStrip;
 
       // --- Top Plot: Voltages (Vs, Vo, E) ---
       let topTitle = 'Voltage Waveforms (v_s & v_o Superimposed)';
@@ -359,15 +445,22 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       ctx.stroke();
 
       // Draw Gate Pulses at Bottom of the Lower Plot
-      drawGatePulseTrack(ctx, padL, yBotStart + hBot - 14, plotW, 10, totalSteps, totalPoints);
+      drawGatePulseTrack(ctx, padL, yBotStart + hBot - 12, plotW, 8, totalSteps, totalPoints);
 
-      // Scrubber Cursor Line
-      drawScrubber(ctx, padL, padT, plotW, plotH, currentIndex, totalPoints, cyclesCount);
+      // Draw Conduction Device Segments Strip directly below current waveform
+      drawConductionStrip(ctx, padL, yStripStart, plotW, hStrip, totalSteps, totalPoints, currentIndex, cyclesCount);
+
+      // Scrubber Cursor Line spanning through to bottom of conduction strip
+      drawScrubber(ctx, padL, padT, plotW, yStripStart + hStrip - padT, currentIndex, totalPoints, cyclesCount);
 
     } else if (viewMode === 'stacked') {
-      // 4 Separate Stacked oscilloscope tracks: Vo, Io, Vs, Is
+      // 4 Separate Stacked oscilloscope tracks: Vo, Io, Vs, Is + Conduction Strip
       const numTracks = 4;
-      const trackH = (plotH - (numTracks - 1) * 8) / numTracks;
+      const hStrip = 24;
+      const gapStrip = 10;
+      const gapTracks = 8;
+      const availablePlotH = Math.max(120, plotH - hStrip - gapStrip);
+      const trackH = (availablePlotH - (numTracks - 1) * gapTracks) / numTracks;
 
       // Track 1: Output Voltage v_o
       const y1 = padT;
@@ -376,13 +469,13 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       drawSingleWave(ctx, (p) => p.vLoad, minV, maxV, y1, trackH, colors.vLoad, 2.2, totalSteps, totalPoints, padL, plotW);
 
       // Track 2: Load Current i_o
-      const y2 = y1 + trackH + 8;
+      const y2 = y1 + trackH + gapTracks;
       drawPlotBackground(ctx, padL, y2, plotW, trackH, 'Load Current i_o(t)', 'A');
       drawCurrentGrid(ctx, padL, y2, plotW, trackH, 0, maxI);
       drawSingleWave(ctx, (p) => p.iLoad, 0, maxI, y2, trackH, colors.iLoad, 2.2, totalSteps, totalPoints, padL, plotW);
 
       // Track 3: Source Voltage v_s
-      const y3 = y2 + trackH + 8;
+      const y3 = y2 + trackH + gapTracks;
       const v3Title = config.phaseMode === '3-phase'
         ? (showPhaseVoltages && !showLineVoltages)
           ? 'Star Phase Voltage v_an(t)'
@@ -396,7 +489,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       drawSingleWave(ctx, v3Accessor, -maxV, maxV, y3, trackH, colors.vSourceA, 1.8, totalSteps, totalPoints, padL, plotW);
 
       // Track 4: Source Current i_s
-      const y4 = y3 + trackH + 8;
+      const y4 = y3 + trackH + gapTracks;
       const i4Title = config.phaseMode === '3-phase'
         ? showAllPhaseCurrents
           ? '3-Phase Line Currents i_a, i_b, i_c'
@@ -412,8 +505,12 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         drawSingleWave(ctx, (p) => p.iSource, -maxI, maxI, y4, trackH, colors.iSource, 1.8, totalSteps, totalPoints, padL, plotW);
       }
 
+      // Draw Conduction Device Segments Strip below track 4
+      const yStripStart = y4 + trackH + gapStrip;
+      drawConductionStrip(ctx, padL, yStripStart, plotW, hStrip, totalSteps, totalPoints, currentIndex, cyclesCount);
+
       // Scrubber
-      drawScrubber(ctx, padL, padT, plotW, plotH, currentIndex, totalPoints, cyclesCount);
+      drawScrubber(ctx, padL, padT, plotW, yStripStart + hStrip - padT, currentIndex, totalPoints, cyclesCount);
     }
   }, [viewMode, cyclesCount, showGrid, showRmsAvg, showPhaseVoltages, showLineVoltages, showAllPhaseCurrents, currentIndex, points, simResult, config, isLight]);
 
@@ -592,6 +689,203 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         ctx.fillRect(gx - 1.5, y - 4, 3, h + 4);
       }
     }
+  };
+
+  interface ConductionSegment {
+    label: string;
+    startStep: number;
+    endStep: number;
+    devices: string[];
+    isDCM: boolean;
+    isFreewheel: boolean;
+    type: 'diode' | 'thyristor' | 'mixed' | 'fwd' | 'dcm';
+  }
+
+  const drawConductionStrip = (
+    ctx: CanvasRenderingContext2D,
+    padL: number,
+    yStrip: number,
+    plotW: number,
+    hStrip: number,
+    totalSteps: number,
+    totalPoints: number,
+    currentIndex: number,
+    cyclesCount: number
+  ) => {
+    // 1. Text badge on the left margin
+    ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
+    ctx.font = 'bold 8.5px monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ACTIVE', padL - 8, yStrip + hStrip / 2 - 5);
+    ctx.fillText('PAIR', padL - 8, yStrip + hStrip / 2 + 5);
+
+    // 2. Base container background
+    ctx.fillStyle = isLight ? 'rgba(248, 250, 252, 0.95)' : 'rgba(15, 23, 42, 0.95)';
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(padL, yStrip, plotW, hStrip, 4);
+    } else {
+      ctx.rect(padL, yStrip, plotW, hStrip);
+    }
+    ctx.fill();
+    ctx.strokeStyle = isLight ? 'rgba(203, 213, 225, 0.9)' : 'rgba(51, 65, 85, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 3. Current active scrubber position
+    const cycleFrac = (currentIndex / (totalPoints - 1)) / cyclesCount;
+    const currentX = padL + cycleFrac * plotW;
+
+    // Build contiguous segments
+    const segments: ConductionSegment[] = [];
+    for (let s = 0; s < totalSteps; s++) {
+      const pt = points[s % totalPoints];
+      const dev = getActiveDeviceAtPoint(pt, config);
+      if (segments.length === 0) {
+        segments.push({
+          label: dev.label,
+          startStep: s,
+          endStep: s,
+          devices: dev.devices,
+          isDCM: dev.isDCM,
+          isFreewheel: dev.isFreewheel,
+          type: dev.type,
+        });
+      } else {
+        const last = segments[segments.length - 1];
+        if (last.label === dev.label) {
+          last.endStep = s;
+        } else {
+          segments.push({
+            label: dev.label,
+            startStep: s,
+            endStep: s,
+            devices: dev.devices,
+            isDCM: dev.isDCM,
+            isFreewheel: dev.isFreewheel,
+            type: dev.type,
+          });
+        }
+      }
+    }
+
+    // Clean up micro-glitches of 1 step between same labels
+    for (let i = 1; i < segments.length - 1; i++) {
+      const seg = segments[i];
+      if (seg.endStep - seg.startStep <= 1) {
+        if (segments[i - 1].label === segments[i + 1].label) {
+          segments[i - 1].endStep = segments[i + 1].endStep;
+          segments.splice(i, 2);
+          i--;
+        }
+      }
+    }
+
+    // 4. Render each segment
+    segments.forEach((seg) => {
+      const x1 = padL + (seg.startStep / (totalSteps - 1)) * plotW;
+      const x2 = padL + (seg.endStep / (totalSteps - 1)) * plotW;
+      const segW = Math.max(1, x2 - x1);
+
+      const isCurrent = currentX >= x1 - 0.5 && currentX <= x2 + 0.5;
+
+      let fillBg = '';
+      let borderStroke = '';
+      let textColor = '';
+
+      if (seg.isDCM) {
+        fillBg = isCurrent
+          ? (isLight ? 'rgba(203, 213, 225, 0.95)' : 'rgba(51, 65, 85, 0.85)')
+          : (isLight ? 'rgba(241, 245, 249, 0.6)' : 'rgba(30, 41, 59, 0.45)');
+        borderStroke = isCurrent ? (isLight ? '#475569' : '#94a3b8') : (isLight ? '#cbd5e1' : '#334155');
+        textColor = isLight ? '#64748b' : '#94a3b8';
+      } else if (seg.isFreewheel) {
+        fillBg = isCurrent
+          ? (isLight ? 'rgba(253, 230, 138, 0.95)' : 'rgba(180, 83, 9, 0.65)')
+          : (isLight ? 'rgba(254, 243, 199, 0.75)' : 'rgba(120, 53, 15, 0.35)');
+        borderStroke = isCurrent ? '#d97706' : (isLight ? '#fcd34d' : '#92400e');
+        textColor = isLight ? '#92400e' : '#fde68a';
+      } else if (seg.type === 'thyristor') {
+        fillBg = isCurrent
+          ? (isLight ? 'rgba(167, 243, 208, 0.95)' : 'rgba(6, 95, 70, 0.75)')
+          : (isLight ? 'rgba(209, 250, 229, 0.75)' : 'rgba(6, 78, 59, 0.35)');
+        borderStroke = isCurrent ? (isLight ? '#059669' : '#10b981') : (isLight ? '#6ee7b7' : '#047857');
+        textColor = isLight ? '#065f46' : '#a7f3d0';
+      } else if (seg.type === 'diode') {
+        fillBg = isCurrent
+          ? (isLight ? 'rgba(186, 230, 253, 0.95)' : 'rgba(3, 105, 161, 0.75)')
+          : (isLight ? 'rgba(224, 242, 254, 0.75)' : 'rgba(12, 74, 110, 0.35)');
+        borderStroke = isCurrent ? (isLight ? '#0284c7' : '#38bdf8') : (isLight ? '#7dd3fc' : '#0369a1');
+        textColor = isLight ? '#0369a1' : '#bae6fd';
+      } else {
+        // Mixed
+        fillBg = isCurrent
+          ? (isLight ? 'rgba(221, 214, 254, 0.95)' : 'rgba(91, 33, 182, 0.75)')
+          : (isLight ? 'rgba(237, 233, 254, 0.75)' : 'rgba(76, 29, 149, 0.35)');
+        borderStroke = isCurrent ? '#8b5cf6' : (isLight ? '#c4b5fd' : '#6d28d9');
+        textColor = isLight ? '#5b21b6' : '#ddd6fe';
+      }
+
+      // Draw segment fill
+      ctx.fillStyle = fillBg;
+      ctx.fillRect(x1, yStrip + 1, segW, hStrip - 2);
+
+      // Left vertical divider line
+      ctx.beginPath();
+      ctx.strokeStyle = isCurrent ? borderStroke : (isLight ? 'rgba(148, 163, 184, 0.75)' : 'rgba(71, 85, 105, 0.75)');
+      ctx.lineWidth = isCurrent ? 1.8 : 1;
+      ctx.moveTo(x1, yStrip);
+      ctx.lineTo(x1, yStrip + hStrip);
+      ctx.stroke();
+
+      // Commutation tick above strip
+      ctx.beginPath();
+      ctx.strokeStyle = isLight ? 'rgba(100, 116, 139, 0.6)' : 'rgba(148, 163, 184, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.moveTo(x1, yStrip - 3);
+      ctx.lineTo(x1, yStrip);
+      ctx.stroke();
+
+      // Active segment highlight frame & indicator
+      if (isCurrent) {
+        ctx.strokeStyle = borderStroke;
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(x1, yStrip + 1, segW, hStrip - 2);
+
+        // Indicator dot at top of active segment
+        ctx.fillStyle = borderStroke;
+        ctx.beginPath();
+        ctx.arc(x1 + segW / 2, yStrip + 3.5, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // Label text
+      const cx = x1 + segW / 2;
+      const cy = yStrip + hStrip / 2;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = textColor;
+
+      if (segW >= 30) {
+        ctx.font = isCurrent ? 'bold 11px monospace' : '600 10.5px monospace';
+        ctx.fillText(seg.label, cx, cy);
+      } else if (segW >= 18) {
+        ctx.font = isCurrent ? 'bold 9.5px monospace' : '600 9px monospace';
+        ctx.fillText(seg.label, cx, cy);
+      } else if (segW >= 12) {
+        ctx.font = 'bold 7.5px monospace';
+        ctx.fillText(seg.label.replace(/\s+/g, ''), cx, cy);
+      }
+    });
+
+    // Right closing boundary
+    ctx.beginPath();
+    ctx.strokeStyle = isLight ? 'rgba(203, 213, 225, 0.9)' : 'rgba(51, 65, 85, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(padL + plotW, yStrip);
+    ctx.lineTo(padL + plotW, yStrip + hStrip);
+    ctx.stroke();
   };
 
   const drawScrubber = (
@@ -986,6 +1280,18 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 Gate Pulses (α = {config.alpha}°)
               </span>
             )}
+
+            <span
+              className={`flex items-center gap-1.5 font-medium ${
+                isLight ? 'text-sky-800' : 'text-sky-300'
+              }`}
+              title="Active conducting diodes or thyristors in each segment below waveforms"
+            >
+              <span className="w-3.5 h-2 rounded-xs border border-sky-500 bg-sky-500/25 flex items-center justify-center text-[7px] font-bold">
+                {config.phaseMode === '3-phase' ? (Object.values(config.switches).some((s) => s === 'thyristor') ? 'T' : 'D') : 'SW'}
+              </span>
+              Conducting Devices Strip ({config.phaseMode === '3-phase' ? 'Pairs' : 'Switches'})
+            </span>
           </div>
 
           {/* Instant Cursor Values readout */}
@@ -1029,6 +1335,42 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   </span>
                 </>
               )}
+              {(() => {
+                const activeDev = getActiveDeviceAtPoint(currentPt, config);
+                return (
+                  <>
+                    <span className={isLight ? 'text-slate-300' : 'text-slate-500'}>|</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Active:</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded font-bold text-[10px] tracking-wider ${
+                          activeDev.type === 'thyristor'
+                            ? isLight
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-emerald-950/80 text-emerald-300 border border-emerald-700'
+                            : activeDev.type === 'diode'
+                            ? isLight
+                              ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                              : 'bg-sky-950/80 text-sky-300 border border-sky-700'
+                            : activeDev.type === 'fwd'
+                            ? isLight
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : 'bg-amber-950/80 text-amber-300 border border-amber-700'
+                            : activeDev.type === 'mixed'
+                            ? isLight
+                              ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                              : 'bg-purple-950/80 text-purple-300 border border-purple-700'
+                            : isLight
+                            ? 'bg-slate-100 text-slate-600 border border-slate-300'
+                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        }`}
+                      >
+                        {activeDev.label}
+                      </span>
+                    </span>
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -1036,7 +1378,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
       {/* Main Waveform Canvas */}
       <div
-        className={`relative flex-1 min-h-[300px] w-full cursor-crosshair transition-colors duration-200 ${
+        className={`relative flex-1 min-h-[350px] w-full cursor-crosshair transition-colors duration-200 ${
           isLight ? 'bg-white' : 'bg-slate-950'
         }`}
       >
