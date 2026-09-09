@@ -1619,46 +1619,66 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
             <g id="circuit-3ph-halfwave">
               {/* Star-connected source on left with Neutral */}
               <g id="star-source">
-                {/* Phase A */}
-                <circle cx={80} cy={140} r={16} fill={isLight ? '#fee2e2' : '#0f172a'} stroke="#ef4444" strokeWidth={2} />
-                <text x={80} y={144} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#b91c1c' : '#fca5a5'}>A</text>
-                <line x1={96} y1={140} x2={220} y2={140} stroke="#ef4444" strokeWidth={2} />
+                {/* Phase A (Red) */}
+                <circle cx={78} cy={162} r={18} fill={isLight ? '#fee2e2' : '#0f172a'} stroke="#ef4444" strokeWidth={2} />
+                <text x={78} y={159} textAnchor="middle" fontSize="11" fontWeight="bold" fill={isLight ? '#b91c1c' : '#fca5a5'}>A</text>
+                <path d="M 71 168 Q 74.5 162, 78 168 T 85 168" fill="none" stroke={isLight ? '#ef4444' : '#f87171'} strokeWidth={1.5} />
+                <line x1={96} y1={162} x2={220} y2={162} stroke="#ef4444" strokeWidth={2} />
+                <circle cx={220} cy={162} r={3.5} fill={switchStates.S1 ? '#10b981' : '#ef4444'} />
 
-                {/* Phase B */}
-                <circle cx={80} cy={220} r={16} fill={isLight ? '#fef3c7' : '#0f172a'} stroke="#f59e0b" strokeWidth={2} />
-                <text x={80} y={224} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#b45309' : '#fde68a'}>B</text>
-                <line x1={96} y1={220} x2={330} y2={220} stroke="#f59e0b" strokeWidth={2} />
+                {/* Phase B (Amber) */}
+                <circle cx={78} cy={240} r={18} fill={isLight ? '#fef3c7' : '#0f172a'} stroke="#f59e0b" strokeWidth={2} />
+                <text x={78} y={237} textAnchor="middle" fontSize="11" fontWeight="bold" fill={isLight ? '#b45309' : '#fde68a'}>B</text>
+                <path d="M 71 246 Q 74.5 240, 78 246 T 85 246" fill="none" stroke={isLight ? '#f59e0b' : '#fbbf24'} strokeWidth={1.5} />
+                <line x1={96} y1={240} x2={330} y2={240} stroke="#f59e0b" strokeWidth={2} />
+                <circle cx={330} cy={240} r={3.5} fill="#f59e0b" />
+                <line x1={330} y1={240} x2={330} y2={162} stroke={switchStates.S3 ? '#10b981' : '#f59e0b'} strokeWidth={2} />
+                <circle cx={330} cy={162} r={3.5} fill={switchStates.S3 ? '#10b981' : '#f59e0b'} />
 
-                {/* Phase C */}
-                <circle cx={80} cy={300} r={16} fill={isLight ? '#dbeafe' : '#0f172a'} stroke="#3b82f6" strokeWidth={2} />
-                <text x={80} y={304} textAnchor="middle" fontSize="10" fontWeight="bold" fill={isLight ? '#1d4ed8' : '#93c5fd'}>C</text>
-                <line x1={96} y1={300} x2={440} y2={300} stroke="#3b82f6" strokeWidth={2} />
+                {/* Phase C (Blue) */}
+                <circle cx={78} cy={320} r={18} fill={isLight ? '#dbeafe' : '#0f172a'} stroke="#3b82f6" strokeWidth={2} />
+                <text x={78} y={317} textAnchor="middle" fontSize="11" fontWeight="bold" fill={isLight ? '#1d4ed8' : '#93c5fd'}>C</text>
+                <path d="M 71 326 Q 74.5 320, 78 326 T 85 326" fill="none" stroke={isLight ? '#3b82f6' : '#60a5fa'} strokeWidth={1.5} />
+                <line x1={96} y1={320} x2={440} y2={320} stroke="#3b82f6" strokeWidth={2} />
+                <circle cx={440} cy={320} r={3.5} fill="#3b82f6" />
+                <line x1={440} y1={320} x2={440} y2={162} stroke={switchStates.S5 ? '#10b981' : '#3b82f6'} strokeWidth={2} />
+                <circle cx={440} cy={162} r={3.5} fill={switchStates.S5 ? '#10b981' : '#3b82f6'} />
 
                 {/* Common Star Neutral Connections */}
-                <line x1={64} y1={140} x2={40} y2={220} stroke="#ef4444" strokeWidth={2} />
-                <line x1={64} y1={220} x2={40} y2={220} stroke="#f59e0b" strokeWidth={2} />
-                <line x1={64} y1={300} x2={40} y2={220} stroke="#3b82f6" strokeWidth={2} />
-                <line x1={40} y1={220} x2={40} y2={400} stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth={2} />
+                <line x1={60} y1={162} x2={40} y2={240} stroke="#ef4444" strokeWidth={2} />
+                <line x1={60} y1={240} x2={40} y2={240} stroke="#f59e0b" strokeWidth={2} />
+                <line x1={60} y1={320} x2={40} y2={240} stroke="#3b82f6" strokeWidth={2} />
+                <line x1={40} y1={240} x2={40} y2={400} stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth={2} />
                 <line x1={40} y1={400} x2={680} y2={400} stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth={2} />
-                <circle cx={40} cy={220} r={4.5} fill={isLight ? '#1e293b' : '#38bdf8'} />
-                <text x={26} y={215} fontSize="10" fill={isLight ? '#0f172a' : '#94a3b8'} fontWeight="bold">N</text>
+                <circle cx={40} cy={240} r={4.5} fill={isLight ? '#1e293b' : '#38bdf8'} />
+                <text x={24} y={235} fontSize="11" fill={isLight ? '#0f172a' : '#94a3b8'} fontWeight="bold">N</text>
+
+                <text x={78} y={362} textAnchor="middle" fontSize="9.5" fill={isLight ? '#334155' : '#cbd5e1'} fontWeight="bold">
+                  Star-Connected 3-Phase Source
+                </text>
+                <text x={78} y={375} textAnchor="middle" fontSize="8" fill={isLight ? '#64748b' : '#94a3b8'} fontFamily="monospace">
+                  Y-Configuration (Neutral Return)
+                </text>
               </g>
 
-              {/* 3 Switches S1, S3, S5 leading to Common Cathode Bus at Top */}
-              <line x1={220} y1={140} x2={220} y2={118} stroke={switchStates.S1 ? '#10b981' : '#475569'} strokeWidth={2} />
+              {/* 3 Switches S1, S3, S5 leading from phase anodes to common cathode top bus */}
               {renderDeviceSymbol('S1', 220, 140, switches.S1 || 'diode', !!switchStates.S1, !!gatePulses.S1, 'S1', 'Ph A', 'up')}
-
-              <line x1={330} y1={220} x2={330} y2={118} stroke={switchStates.S3 ? '#10b981' : '#475569'} strokeWidth={2} />
               {renderDeviceSymbol('S3', 330, 140, switches.S3 || 'diode', !!switchStates.S3, !!gatePulses.S3, 'S3', 'Ph B', 'up')}
-
-              <line x1={440} y1={300} x2={440} y2={118} stroke={switchStates.S5 ? '#10b981' : '#475569'} strokeWidth={2} />
               {renderDeviceSymbol('S5', 440, 140, switches.S5 || 'diode', !!switchStates.S5, !!gatePulses.S5, 'S5', 'Ph C', 'up')}
 
-              {/* Common Cathode Top Bus */}
+              {/* Common Cathode Top Bus and Drops to Device Cathodes at y=118 */}
               <line x1={220} y1={80} x2={680} y2={80} stroke={iLoadVal > 0.001 ? '#10b981' : '#475569'} strokeWidth={2.5} />
               <line x1={220} y1={80} x2={220} y2={118} stroke={switchStates.S1 ? '#10b981' : '#475569'} strokeWidth={2} />
+              <circle cx={220} cy={80} r={3.5} fill={switchStates.S1 ? '#10b981' : '#64748b'} />
+              <circle cx={220} cy={118} r={2.5} fill={switchStates.S1 ? '#10b981' : '#64748b'} />
+
               <line x1={330} y1={80} x2={330} y2={118} stroke={switchStates.S3 ? '#10b981' : '#475569'} strokeWidth={2} />
+              <circle cx={330} cy={80} r={3.5} fill={switchStates.S3 ? '#10b981' : '#64748b'} />
+              <circle cx={330} cy={118} r={2.5} fill={switchStates.S3 ? '#10b981' : '#64748b'} />
+
               <line x1={440} y1={80} x2={440} y2={118} stroke={switchStates.S5 ? '#10b981' : '#475569'} strokeWidth={2} />
+              <circle cx={440} cy={80} r={3.5} fill={switchStates.S5 ? '#10b981' : '#64748b'} />
+              <circle cx={440} cy={118} r={2.5} fill={switchStates.S5 ? '#10b981' : '#64748b'} />
 
               {/* FWD */}
               {renderFreewheelingDiode(550, 240, 80, 400)}
@@ -1668,13 +1688,13 @@ export const SchematicView: React.FC<SchematicViewProps> = ({
 
               {/* 3-Phase Half-Wave Particles through Star Point */}
               {switchStates.S1 && !isFWDConducting && (
-                renderCurrentParticles("M 40 220 L 64 140 L 96 140 L 220 140 L 220 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s1", 5.8, 24)
+                renderCurrentParticles("M 40 240 L 60 162 L 96 162 L 220 162 L 220 118 L 220 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s1", 5.8, 24)
               )}
               {switchStates.S3 && !isFWDConducting && (
-                renderCurrentParticles("M 40 220 L 64 220 L 96 220 L 330 220 L 330 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s3", 5.8, 24)
+                renderCurrentParticles("M 40 240 L 60 240 L 96 240 L 330 240 L 330 162 L 330 118 L 330 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s3", 5.8, 24)
               )}
               {switchStates.S5 && !isFWDConducting && (
-                renderCurrentParticles("M 40 220 L 64 300 L 96 300 L 440 300 L 440 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s5", 5.8, 24)
+                renderCurrentParticles("M 40 240 L 60 320 L 96 320 L 440 320 L 440 162 L 440 118 L 440 80 L 680 80 L 680 400 L 40 400 Z", "3ph-hw-s5", 5.8, 24)
               )}
               {isFWDConducting && (
                 renderCurrentParticles("M 680 400 L 550 400 L 550 80 L 680 80 L 680 400", "3ph-hw-fwd", 3.8, 16)
